@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>算法 PPT 生成器 (AlgoSlides)</title>
+    <!-- 加载 Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Inter 字体 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        /* 设置全局字体和基础样式 */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 自定义滚动条样式 */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: rgba(156, 163, 175, 0.5); /* Gray-400 */
+          border-radius: 20px;
+        }
+        /* 暗色模式下的滚动条颜色 */
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+             background-color: rgba(75, 85, 99, 0.5); /* Gray-700 */
+        }
+        
+        /* 背景装饰动画 (保持在 HTML 文件中) */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+            animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+            animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+            animation-delay: 4s;
+        }
+    </style>
+</head>
+<body>
+    <!-- React 挂载点 -->
+    <div id="root"></div>
+
+    <!-- 1. 引入 React 和 ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- 2. 引入 Babel，用于在浏览器中转换 JSX 和 ES6 模块 -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 3. React 应用代码 (App.jsx的内容) -->
+    <script type="text/babel">
+        // --- 系统默认配置 (System Default Config) ---
+        // 任何系统更新都应该修改这个对象
+        const DEFAULT_CONFIG = {
+                apiKey: '',
+                baseUrl: 'https://api.deepseek.com/v1',
+                model: 'deepseek-chat',
+                pageCount: 4,
+                fontSize: 18,
+                prompts: [
+                    "请以Markdown格式，给出面试官最喜欢的 '{query}' 的最优解代码（Python 代码)，先只给python代码，并用介绍下核心代码部分和核心解决思路",
+                    "请以Markdown格式，先只给最好理解的python代码，请分析 '{query}' 问题，并给出这类问题的最好理解的解法",
+                    "请以Markdown格式，先只给核心子问题的python代码,并简要分析算法题 '{query}' 的核心难点并对子问题进行代码实现",
+                    "请以Markdown格式，先只给暴力求解的python代码，详细拆解 '{query}'并给出这个问题的暴力解法"
+                    ]
+        };
+        
+        // Lucide Icons (Inline Placeholder Definitions)
+        const Settings = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zM4 12.22v-.44a2 2 0 0 1 2-2h.44a2 2 0 0 1 2 2v.44a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM12.22 20v-.44a2 2 0 0 0-2-2h-.44a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2zM20 12.22v-.44a2 2 0 0 1-2-2h-.44a2 2 0 0 1-2 2v.44a2 2 0 0 1 2 2h.44a2 2 0 0 1 2-2z" /><circle cx="12" cy="12" r="3" /></svg>;
+        const Play = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>;
+        const ChevronDown = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>;
+        const ChevronUp = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m18 15-6-6-6 6"/></svg>;
+        const Printer = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9V2H18V9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect width="12" height="8" x="6" y="14" /></svg>;
+        const Code = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></svg>;
+        const Layers = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 1.5 8.6 4.9v9.8L12 21.5 3.4 16.2V6.4z"/><path d="m12 1.5 8.6 4.9v9.8L12 21.5 3.4 16.2V6.4z"/><path d="M3.4 6.4 12 11.3 20.6 6.4"/><path d="M12 21.5V11.3"/></svg>;
+        const Moon = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>;
+        const Sun = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>;
+        const X = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+        const RefreshCw = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9v3a6 6 0 1 1 6 6h-3"/><polyline points="20 11 20 16 15 16"/></svg>;
+        const PlusCircle = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8"/><path d="M8 12h8"/></svg>;
+        const MinusCircle = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>;
+        const Cpu = (props) => <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="5" width="14" height="14" rx="2" ry="2"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="M20 12h2"/><path d="M2 12h2"/><path d="M9 9h6v6H9z"/></svg>;
+
+
+        const { useState, useEffect, useRef } = React;
+
+        // --- 模拟数据 (使用模板字符串修复了之前的错误) ---
+        const MOCK_DELAY = 30;
+        const mockResponses = [
+            {
+                title: "题目分析与解题思路",
+                content: `### 核心问题分析
+
+针对这个问题，我们需要关注时间复杂度的限制。
+通常暴力解法的时间复杂度是 O(n^2)，这在数据量较大时会超时。
+
+### 思考方向
+
+1.  **数据结构选择**：是否可以使用哈希表来降低查找时间？
+2.  **双指针法**：如果是数组问题，排序后双指针是否可行？
+3.  **边界条件**：空数组或单元素数组如何处理？
+
+我们的目标是将复杂度降低到 O(n) 或 O(n log n)。`
+            },
+            {
+                title: "核心算法逻辑",
+                content: `### 算法步骤
+
+我们采用 **哈希表 (Hash Map)** 策略：
+
+1.  初始化一个空的哈希表 \`map\`。
+2.  遍历数组 \`nums\`，对于每个元素 \`num\`：
+    * 计算 \`target - num\`，得到所需的目标补数 \`complement\`。
+    * 检查 \`complement\` 是否已存在于 \`map\` 中。
+    * 如果存在，直接返回 \`[map.get(complement), current_index]\`。
+    * 如果不存在，将 \`num\` 及其下标存入 \`map\`。
+
+这种方法只需要遍历一次数组，空间换时间。`
+            },
+            {
+                title: "最优解代码实现",
+                content: `以下是基于 Python 的最优解实现：
+
+\`\`\`python
+class Solution:
+    def twoSum(self, nums: List[int], target: int) -> List[int]:
+        hash_map = {}
+        
+        for i, num in enumerate(nums):
+            complement = target - num
+            if complement in hash_map:
+                return [hash_map[complement], i]
+            hash_map[num] = i
+        return []
+\`\`\`
+
+**复杂度分析：**
+* 时间复杂度：O(N)
+* 空间复杂度：O(N)`
+            },
+            {
+                title: "总结与扩展",
+                content: `### 总结
+通过引入哈希表，我们成功消除了嵌套循环，将查找操作降为 O(1)。
+
+### 扩展思考
+
+* 如果数组是有序的，我们可以使用**双指针**，这样可以将空间复杂度降为 O(1)。
+* 如果需要返回所有的组合而不仅仅是一组，代码需要如何修改？
+* 在多线程环境下，哈希表的读写安全需要注意什么？`
+            }
+        ];
+
+        // --- 工具函数：指数退避 ---
+        const exponentialBackoffFetch = async (url, options, maxRetries = 5) => {
+            let delay = 1000;
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.status === 429 && i < maxRetries - 1) {
+                        // Too many requests, retry
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    return response;
+                } catch (error) {
+                    if (i < maxRetries - 1) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    throw error;
+                }
+            }
+            throw new Error('Maximum retry attempts reached.');
+        };
+
+        /**
+         * 1. TypewriterText 组件：实现打字机效果和 Markdown/代码块渲染
+         */
+        const TypewriterText = ({ content, speed = 20, fontSize }) => {
+          const [displayedText, setDisplayedText] = useState('');
+          const [currentIndex, setCurrentIndex] = useState(0);
+
+          // 当 content 改变时，重置显示并开始打字机效果
+          useEffect(() => {
+            if (content.length > 0 && content !== displayedText) {
+                if (currentIndex < content.length) {
+                    const timeout = setTimeout(() => {
+                        setDisplayedText(prev => prev + content[currentIndex]);
+                        setCurrentIndex(prev => prev + 1);
+                    }, speed);
+                    return () => clearTimeout(timeout);
+                }
+            }
+          }, [currentIndex, content, speed, displayedText]);
+          
+          // 仅在 content 缩短时（如重置）才强制重置内部状态
+          useEffect(() => {
+            if (content.length < displayedText.length) {
+               setDisplayedText('');
+               setCurrentIndex(0);
+            }
+          }, [content, displayedText.length]);
+          
+          // 简单的 Markdown 解析器 (处理代码块、标题和加粗)
+          const renderContent = (text) => {
+            // 使用 ``` 分割文本为普通文本和代码块
+            const parts = text.split(/```/);
+
+            return parts.map((part, index) => {
+              if (index % 2 === 1) {
+                // 代码块
+                const lines = part.trim().split('\n');
+                const lang = lines[0].trim().toLowerCase();
+                const code = lines.slice(1).join('\n');
+                
+                return (
+                  <div key={index} className="my-4 bg-white text-gray-800 p-4 rounded-lg font-mono text-sm overflow-x-auto border border-gray-300 shadow-lg transition-all duration-300">
+                    <div className="text-xs text-gray-500 mb-2 border-b border-gray-300 pb-1 flex justify-between">
+                        <span>{lang || 'CODE'}</span>
+                        <div className="flex gap-1">
+                            <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                            <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                        </div>
+                    </div>
+                    <pre style={{ fontSize: `${fontSize * 0.85}px`, lineHeight: '1.5' }}>{code}</pre>
+                  </div>
+                );
+              } else {
+                // 普通文本
+                return (
+                  <div key={index} style={{ fontSize: `${fontSize}px`, lineHeight: '1.7' }} className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 font-sans">
+                    {part.split('\n').map((line, i) => {
+                        const trimmedLine = line.trim();
+                        
+                        // 标题
+                        if (trimmedLine.startsWith('### ')) {
+                            return <h3 key={i} className="text-xl font-bold mt-4 mb-2 text-blue-600 dark:text-blue-400">{trimmedLine.replace('### ', '')}</h3>
+                        }
+                        // 加粗
+                        if (trimmedLine.startsWith('*') && trimmedLine.endsWith('*')) {
+                            return <strong key={i} className="block mt-2 mb-1">{trimmedLine.replace(/\*/g, '')}</strong>
+                        }
+                        // 列表 (简单的 - 标记)
+                        if (trimmedLine.startsWith('- ')) {
+                            return <li key={i} className="ml-4 list-disc">{trimmedLine.replace('- ', '')}</li>
+                        }
+
+                        // 普通段落，保留换行
+                        return <p key={i} className="mb-2">{line}</p>
+                    })}
+                  </div>
+                );
+              }
+            });
+          };
+
+          return <div className="w-full h-full animate-fadeIn">{renderContent(displayedText)}</div>;
+        };
+
+        /**
+         * 2. Slide 组件：单个幻灯片布局
+         */
+        const Slide = ({ data, isActive, config }) => {
+          return (
+            <div 
+                className={`w-full h-full flex-shrink-0 flex flex-col p-8 md:p-16 transition-opacity duration-700 ${isActive ? 'opacity-100' : 'opacity-50 pointer-events-none'}`}
+                style={{ scrollSnapAlign: 'start' }}
+            >
+              <div className="flex-1 max-w-5xl mx-auto w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-gray-200 dark:border-gray-300 transition-shadow">
+                {/* Header */}
+                <div className="h-16 bg-gradient-to-r from-blue-600 to-indigo-700 flex items-center px-6 justify-between shadow-md">
+                   <div className="flex items-center gap-3 text-white">
+                        {data.status === 'loading' && <RefreshCw className="animate-spin w-5 h-5" />}
+                        {data.status === 'streaming' && <Printer className="animate-pulse w-5 h-5" />}
+                        {data.status === 'done' && <Layers className="w-5 h-5" />}
+                        <h2 className="text-lg font-semibold tracking-wide">{data.title || "生成中..."}</h2>
+                   </div>
+                   <div className="text-xs text-blue-200 font-mono">PAGE {data.id} / {config.pageCount}</div>
+                </div>
+
+                {/* Content Body */}
+                <div className="flex-1 p-8 overflow-y-auto custom-scrollbar bg-gray-50 dark: bg-white transition-colors">
+                    {data.status !== 'loading' || data.content ? (
+                        <TypewriterText 
+                            content={data.content} 
+                            fontSize={config.fontSize}
+                        />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-gray-400 gap-4">
+                            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <p className="animate-pulse">AI 正在为本页思考算法逻辑...</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Footer */}
+                <div className="h-10 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-300 flex items-center px-6 justify-between text-xs text-gray-500 transition-colors">
+                    <span>Algorithm AI Presentation</span>
+                    <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${data.status === 'done' ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></span>
+                        {data.status === 'done' ? '生成完成' : data.status === 'streaming' ? '打字中...' : '准备中...'}
+                    </div>
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        /**
+         * 3. App 组件：主应用逻辑和路由
+         */
+        function App() {
+          const [view, setView] = useState('search'); // 'search' | 'presentation'
+          const [query, setQuery] = useState('');
+          const [currentSlide, setCurrentSlide] = useState(0);
+          const [isDarkMode, setIsDarkMode] = useState(true);
+          const [showSettings, setShowSettings] = useState(false);
+          const [isGenerating, setIsGenerating] = useState(false);
+
+          // 配置状态
+          const [config, setConfig] = useState(() => {
+            // 尝试从 localStorage 加载配置
+            try {
+                const savedConfig = localStorage.getItem('algo_ppt_config');
+                // 如果存在缓存，加载缓存。如果不存在，使用系统默认配置。
+                return savedConfig ? JSON.parse(savedConfig) : DEFAULT_CONFIG;
+            } catch (e) {
+                console.error("Could not load config from localStorage, using default.", e);
+                return DEFAULT_CONFIG;
+            }
+          });
+
+          // 幻灯片数据状态
+          const [slides, setSlides] = useState([]);
+
+          // 切换暗黑模式
+          useEffect(() => {
+            if (isDarkMode) {
+              document.documentElement.classList.add('dark');
+            } else {
+              document.documentElement.classList.remove('dark');
+            }
+          }, [isDarkMode]);
+
+          // 保存配置到 localStorage
+          useEffect(() => {
+            localStorage.setItem('algo_ppt_config', JSON.stringify(config));
+          }, [config]);
+
+
+          const handleConfigChange = (key, value) => {
+            setConfig(prev => ({ ...prev, [key]: value }));
+          };
+
+          const handlePromptChange = (index, value) => {
+            const newPrompts = [...config.prompts];
+            newPrompts[index] = value;
+            setConfig(prev => ({ ...prev, prompts: newPrompts, pageCount: newPrompts.length }));
+          };
+          
+          // 新增：一键采纳系统更新的 Prompt
+          const resetPromptsToDefault = () => {
+             setConfig(prev => ({
+                ...prev,
+                prompts: DEFAULT_CONFIG.prompts,
+                pageCount: DEFAULT_CONFIG.prompts.length
+             }));
+             // 可以添加一个短暂的提示，比如 "已采纳系统默认模板"
+          };
+
+          const addSlide = () => {
+            setConfig(prev => ({ 
+                ...prev, 
+                prompts: [...prev.prompts, "请输入新的页面 Prompt..."], 
+                pageCount: prev.pageCount + 1 
+            }));
+          };
+
+          const removeSlide = (index) => {
+            if (config.prompts.length <= 1) return;
+            const newPrompts = config.prompts.filter((_, i) => i !== index);
+            setConfig(prev => ({ 
+                ...prev, 
+                prompts: newPrompts, 
+                pageCount: prev.pageCount - 1 
+            }));
+          };
+
+          // 核心生成逻辑
+          const startPresentation = () => {
+            if (!query.trim() || isGenerating) return;
+
+            setView('presentation');
+            setCurrentSlide(0);
+            setIsGenerating(true);
+            
+            // 初始化幻灯片占位符
+            const initialSlides = config.prompts.map((_, i) => ({
+              id: i + 1,
+              title: ["最优解法", "最好理解解法", "子问题", "暴力求解"][i] || `第 ${i+1} 页`,
+              content: "",
+              status: "loading"
+            }));
+            setSlides(initialSlides);
+
+            // 并发请求所有页面内容
+            initialSlides.forEach((slide, index) => {
+                fetchSlideContent(index, slide.title);
+            });
+          };
+
+          // 模拟/真实 API 调用
+          const fetchSlideContent = async (index, title) => {
+            const promptTemplate = config.prompts[index] || `请详细讲解 ${query} 的第 ${index+1} 部分。`;
+            const finalPrompt = promptTemplate.replace('{query}', query);
+
+            // --- 1. Mock 数据逻辑 (如果 API Key 为空) ---
+            if (!config.apiKey || config.apiKey.trim() === '') {
+                let mockText = mockResponses[index % mockResponses.length].content;
+                mockText = mockText.replace(/Two Sum|快速排序|LRU Cache/g, query);
+                
+                let currentText = "";
+                
+                // 【修复点 1：安全转换】 确保 mockText 在 split 之前是字符串
+                const safeMockText = String(mockText || "加载失败，请检查设置。");
+                const chars = safeMockText.split("");
+                
+                setSlides(prev => {
+                    const newSlides = [...prev];
+                    newSlides[index].status = 'streaming';
+                    return newSlides;
+                });
+
+                for (let i = 0; i < chars.length; i++) {
+                    await new Promise(r => setTimeout(r, MOCK_DELAY));
+                    currentText += chars[i];
+                    
+                    // 使用函数式更新确保并发下的状态安全
+                    setSlides(prev => {
+                        const newSlides = [...prev];
+                        newSlides[index].content = currentText;
+                        return newSlides;
+                    });
+                }
+                
+                setSlides(prev => {
+                    const newSlides = [...prev];
+                    newSlides[index].status = 'done';
+                    if (newSlides.every(s => s.status === 'done')) setIsGenerating(false);
+                    return newSlides;
+                });
+                return;
+            }
+
+            // --- 2. 真实 API 调用 (流式) ---
+            try {
+                const response = await exponentialBackoffFetch(`${config.baseUrl}/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${config.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: config.model,
+                        messages: [
+                            { role: "system", content: "你是一个专业的算法讲师，请严格以Markdown格式输出内容，优先输出带有中文注释的代码，适合PPT展示，重点清晰，代码规范。不要包含任何除Markdown之外的解释性文字。" },
+                            { role: "user", content: finalPrompt }
+                        ],
+                        stream: true 
+                    })
+                });
+
+                if (!response.ok) throw new Error(`API 返回错误: ${response.statusText}`);
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let accumulatedText = "";
+
+                setSlides(prev => {
+                    const newSlides = [...prev];
+                    newSlides[index].status = 'streaming';
+                    return newSlides;
+                });
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split("\n");
+                    
+                    for (const line of lines) {
+                        if (line.startsWith("data: ")) {
+                            const dataStr = line.replace("data: ", "").trim();
+                            if (dataStr === "[DONE]") break;
+                            try {
+                                const json = JSON.parse(dataStr);
+                                const content = json.choices[0]?.delta?.content || "";
+                                accumulatedText += content;
+
+                                setSlides(prev => {
+                                    const newSlides = [...prev];
+                                    newSlides[index].content = accumulatedText;
+                                    return newSlides;
+                                });
+                            } catch (e) {
+                                // 忽略对部分数据块的解析错误
+                            }
+                        }
+                    }
+                }
+
+                setSlides(prev => {
+                    const newSlides = [...prev];
+                    newSlides[index].status = 'done';
+                    if (newSlides.every(s => s.status === 'done')) setIsGenerating(false);
+                    return newSlides;
+                });
+
+            } catch (error) {
+                setSlides(prev => {
+                    const newSlides = [...prev];
+                    newSlides[index].content = `**错误：** ${error.message}\n请检查 API Key、Base URL 或网络连接。`;
+                    newSlides[index].status = 'done';
+                    if (newSlides.every(s => s.status === 'done')) setIsGenerating(false);
+                    return newSlides;
+                });
+            }
+          };
+
+          // 键盘导航
+          useEffect(() => {
+            const handleKeyDown = (e) => {
+                if (view !== 'presentation') return;
+                if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    setCurrentSlide(prev => Math.min(prev + 1, slides.length - 1));
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    setCurrentSlide(prev => Math.max(prev - 1, 0));
+                }
+            };
+            window.addEventListener('keydown', handleKeyDown);
+            return () => window.removeEventListener('keydown', handleKeyDown);
+          }, [view, slides.length]);
+
+
+          return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans overflow-hidden">
+              
+              {/* 顶部固定导航 */}
+              <nav className="fixed top-0 left-0 right-0 z-50 p-4 flex justify-between items-center bg-transparent pointer-events-none">
+                <div className="pointer-events-auto bg-white/80 dark:bg-black/50 backdrop-blur-md p-2 rounded-full border border-gray-200 dark:border-gray-800 shadow-sm flex items-center gap-2">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">A</div>
+                    <span className="font-semibold px-2 hidden md:block">AlgoSlides</span>
+                </div>
+                
+                <div className="pointer-events-auto flex gap-2">
+                    <button 
+                        onClick={() => setIsDarkMode(!isDarkMode)} 
+                        title="切换深色/浅色模式"
+                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                    >
+                        {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+                    </button>
+                    <button 
+                        onClick={() => setShowSettings(true)} 
+                        title="设置 API 和 PPT 模板"
+                        className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
+                    >
+                        <Settings className="w-5 h-5" />
+                    </button>
+                    {view === 'presentation' && (
+                        <button 
+                            onClick={() => setView('search')} 
+                            title="返回搜索页"
+                            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors bg-red-500/10 text-red-500"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    )}
+                </div>
+              </nav>
+
+              {/* 1. 搜索视图 */}
+              {view === 'search' && (
+                <div className="h-screen flex flex-col items-center justify-center p-4 animate-fadeIn relative">
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 dark:opacity-10">
+                         {/* 装饰背景 */}
+                         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500 rounded-full blur-3xl mix-blend-multiply filter animate-blob"></div>
+                         <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-purple-500 rounded-full blur-3xl mix-blend-multiply filter animate-blob animation-delay-2000"></div>
+                         <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-pink-500 rounded-full blur-3xl mix-blend-multiply filter animate-blob animation-delay-4000"></div>
+                    </div>
+
+                    <div className="z-10 w-full max-w-2xl flex flex-col items-center gap-8">
+                        <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 text-center leading-tight">
+                            Algorithm to Slide
+                        </h1>
+                        <p className="text-gray-500 dark:text-gray-400 text-center text-lg max-w-md">
+                            输入算法题目，一键生成全屏滑动演示 PPT。<br/>支持 GPT/DeepSeek 等 API。
+                        </p>
+                        
+                        <div className="w-full relative group">
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200"></div>
+                            <div className="relative flex bg-white dark: bg-white rounded-lg p-2 items-center">
+                                <input 
+                                    type="text" 
+                                    className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-lg placeholder-gray-400 dark:placeholder-gray-600"
+                                    placeholder="例如：Two Sum, 快速排序, LRU Cache..."
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && startPresentation()}
+                                    disabled={isGenerating}
+                                />
+                                <button 
+                                    onClick={startPresentation}
+                                    disabled={isGenerating || !query.trim()}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-md font-semibold transition-all flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                >
+                                    {isGenerating ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} 
+                                    {isGenerating ? '生成中...' : '生成 PPT'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 text-sm text-gray-500 dark:text-gray-600">
+                            <div className="flex items-center gap-1"><Printer className="w-4 h-4" /> 打字机效果</div>
+                            <div className="flex items-center gap-1"><Code className="w-4 h-4" /> 代码高亮</div>
+                            <div className="flex items-center gap-1"><Layers className="w-4 h-4" /> {config.pageCount} 页并发</div>
+                        </div>
+                    </div>
+                </div>
+              )}
+
+              {/* 2. 演示视图 */}
+              {view === 'presentation' && (
+                <div className="h-screen w-full relative overflow-hidden bg-gray-100 dark:bg-black">
+                    {/* 幻灯片容器 */}
+                    <div 
+                        className="w-full h-full transition-transform duration-700 ease-in-out"
+                        style={{ transform: `translateY(-${currentSlide * 100}%)` }}
+                    >
+                        {slides.map((slide, index) => (
+                            <div key={slide.id} className="w-full h-full relative">
+                                <Slide data={slide} isActive={currentSlide === index} config={config} />
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* 侧边导航指示器 */}
+                    <div className="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-40">
+                        {slides.map((_, idx) => (
+                            <button 
+                                key={idx}
+                                onClick={() => setCurrentSlide(idx)}
+                                title={`切换到第 ${idx + 1} 页`}
+                                className={`w-3 h-3 rounded-full transition-all duration-300 ${currentSlide === idx ? 'bg-blue-500 scale-125 shadow-lg' : 'bg-gray-300 dark:bg-gray-700 hover:bg-blue-400/50'}`}
+                            />
+                        ))}
+                    </div>
+
+                    {/* 控制按钮 */}
+                    <div className="fixed bottom-6 right-6 flex gap-2 z-40">
+                        <button 
+                            onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
+                            disabled={currentSlide === 0}
+                            title="上一页"
+                            className="p-3 bg-white/10 backdrop-blur-sm border border-gray-200 dark:border-gray-300 rounded-full hover:bg-white/20 disabled:opacity-30 text-gray-800 dark:text-white transition-all"
+                        >
+                            <ChevronUp className="w-6 h-6" />
+                        </button>
+                        <button 
+                            onClick={() => setCurrentSlide(Math.min(slides.length - 1, slides.length - 1))}
+                            disabled={currentSlide === slides.length - 1}
+                            title="下一页"
+                            className="p-3 bg-white/10 backdrop-blur-sm border border-gray-200 dark:border-gray-300 rounded-full hover:bg-white/20 disabled:opacity-30 text-gray-800 dark:text-white transition-all"
+                        >
+                            <ChevronDown className="w-6 h-6" />
+                        </button>
+                    </div>
+                </div>
+              )}
+
+              {/* 3. 设置模态框 */}
+              {showSettings && (
+                <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn">
+                    <div className="bg-white dark: bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        <div className="p-6 border-b border-gray-200 dark:border-gray-800 flex justify-between items-center">
+                            <h2 className="text-xl font-bold flex items-center gap-2">
+                                <Settings className="w-5 h-5 text-blue-500" /> 全局设置
+                            </h2>
+                            <button onClick={() => setShowSettings(false)} className="hover:bg-gray-100 dark:hover:bg-gray-800 p-2 rounded-full">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
+                            {/* API 设置 */}
+                            <div className="space-y-4 p-4 border rounded-xl dark:border-gray-300 bg-gray-50 dark:bg-gray-800">
+                                <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">AI API 配置</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Base URL</label>
+                                        <input 
+                                            type="text" 
+                                            value={config.baseUrl} 
+                                            onChange={(e) => handleConfigChange('baseUrl', e.target.value)}
+                                            className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">API Key <span className="text-xs text-red-400">(留空将使用本地演示模式)</span></label>
+                                        <input 
+                                            type="password" 
+                                            value={config.apiKey} 
+                                            onChange={(e) => handleConfigChange('apiKey', e.target.value)}
+                                            placeholder="sk-..."
+                                            className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">Model Name</label>
+                                        <input 
+                                            type="text" 
+                                            value={config.model} 
+                                            onChange={(e) => handleConfigChange('model', e.target.value)}
+                                            className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-medium">字体大小 (px)</label>
+                                        <input 
+                                            type="number" 
+                                            value={config.fontSize} 
+                                            onChange={(e) => handleConfigChange('fontSize', parseInt(e.target.value))}
+                                            className="w-full bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Prompt 设置 */}
+                            <div className="space-y-4 p-4 border rounded-xl dark:border-gray-300 bg-gray-50 dark:bg-gray-800">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                                        PPT 页面 ({config.pageCount} 页)
+                                        <span className="text-xs text-gray-500">使用 <code className="bg-gray-200 dark:bg-gray-700 p-1 rounded font-mono">{'query'}</code> 作为题目占位符</span>
+                                    </h3>
+                                    {/* 新增：重置按钮 */}
+                                    <button 
+                                        onClick={resetPromptsToDefault}
+                                        className="text-sm text-green-600 dark:text-gray-800 hover:text-green-700 dark:hover:text-green-300 py-1 px-3 border border-green-600 dark:border-green-400 rounded-full transition-colors hover:bg-green-600/10"
+                                        title="采纳代码中定义的最新 Prompt 模板"
+                                    >
+                                        <RefreshCw className="w-4 h-4 inline mr-1" /> 重置为系统默认
+                                    </button>
+                                </div>
+                                
+                                {config.prompts.map((prompt, idx) => (
+                                    <div key={idx} className="flex gap-3 items-center p-3 bg-white dark: bg-white rounded-lg shadow-sm border dark:border-gray-300">
+                                        <span className="text-sm font-bold text-gray-600 dark:text-gray-400 w-10 flex-shrink-0">Page {idx + 1}</span>
+                                        <textarea 
+                                            value={prompt}
+                                            onChange={(e) => handlePromptChange(idx, e.target.value)}
+                                            rows={2}
+                                            className="flex-1 bg-transparent border-none outline-none resize-none text-sm"
+                                        />
+                                        <button 
+                                            onClick={() => removeSlide(idx)}
+                                            disabled={config.prompts.length <= 1}
+                                            className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded disabled:opacity-30 transition-colors"
+                                            title="删除此页"
+                                        >
+                                            <MinusCircle className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button 
+                                    onClick={addSlide}
+                                    className="w-full py-2 border border-dashed border-blue-400 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-colors text-sm flex items-center justify-center gap-2 mt-4"
+                                >
+                                    <PlusCircle className="w-5 h-5" /> 添加新页面
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark: bg-white/50 flex justify-end">
+                            <button 
+                                onClick={() => setShowSettings(false)}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                            >
+                                保存并关闭
+                            </button>
+                        </div>
+                    </div>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // 使用 React 18 的 createRoot 渲染方式，避免警告
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+
+    </script>
+</body>
+</html>
