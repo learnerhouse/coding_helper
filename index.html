@@ -245,7 +245,7 @@ class Solution:
               } else {
                 // 普通文本
                 return (
-                  <div key={index} style={{ fontSize: `${fontSize}px`, lineHeight: '1.7' }} className="whitespace-pre-wrap text-gray-800 dark:text-gray-200 font-sans">
+                  <div key={index} style={{ fontSize: `${fontSize}px`, lineHeight: '1.7' }} className="whitespace-pre-wrap text-gray-800 dark:text-gray-50 font-sans">
                     {part.split('\n').map((line, i) => {
                         const trimmedLine = line.trim();
                         
@@ -311,7 +311,7 @@ class Solution:
                 </div>
 
                 {/* Footer */}
-                <div className="h-10 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-300 flex items-center px-6 justify-between text-xs text-gray-500 transition-colors">
+                <div className="h-10 bg-gray-100 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex items-center px-6 justify-between text-xs text-gray-500 dark:text-gray-300 transition-colors">
                     <span>Algorithm AI Presentation</span>
                     <div className="flex items-center gap-2">
                         <span className={`w-2 h-2 rounded-full ${data.status === 'done' ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></span>
@@ -620,7 +620,7 @@ class Solution:
                             <div className="relative flex bg-white dark: bg-white rounded-lg p-2 items-center">
                                 <input 
                                     type="text" 
-                                    className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-lg placeholder-gray-400 dark:placeholder-gray-600"
+                                    className="flex-1 bg-transparent border-none outline-none px-4 py-3 text-lg placeholder-gray-400 dark:placeholder-gray-400"
                                     placeholder="例如：Two Sum, 快速排序, LRU Cache..."
                                     value={query}
                                     onChange={(e) => setQuery(e.target.value)}
@@ -685,7 +685,7 @@ class Solution:
                             <ChevronUp className="w-6 h-6" />
                         </button>
                         <button 
-                            onClick={() => setCurrentSlide(Math.min(slides.length - 1, slides.length - 1))}
+                            onClick={() => setCurrentSlide(Math.min(currentSlide + 1, slides.length - 1))} 
                             disabled={currentSlide === slides.length - 1}
                             title="下一页"
                             className="p-3 bg-white/10 backdrop-blur-sm border border-gray-200 dark:border-gray-300 rounded-full hover:bg-white/20 disabled:opacity-30 text-gray-800 dark:text-white transition-all"
